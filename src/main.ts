@@ -1,46 +1,52 @@
+/* eslint-disable prettier/prettier */
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule);
 
-  const config = app.get(ConfigService);
-  const apiPrefix = config.get<string>('apiPrefix', 'api');
-  const swaggerEnabled = config.get<boolean>('swaggerEnabled', true);
-  const port = config.get<number>('port', 3000);
+    const config = app.get(ConfigService);
+    const apiPrefix = config.get<string>('apiPrefix', 'api');
+    const swaggerEnabled = config.get<boolean>('swaggerEnabled', true);
+    const port = config.get<number>('port', 3000);
 
-  app.setGlobalPrefix(apiPrefix);
+    app.setGlobalPrefix(apiPrefix);
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: { enableImplicitConversion: true },
-    }),
-  );
+    app.useGlobalFilters(new HttpExceptionFilter());
+    app.useGlobalInterceptors(new LoggingInterceptor());
 
-  if (swaggerEnabled) {
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle('Library Loans API')
-      .setDescription('Examen parcial ISIS 3710 — Sistema de préstamos de biblioteca')
-      .setVersion('0.1.0')
-      .addBearerAuth()
-      .build();
-    const doc = SwaggerModule.createDocument(app, swaggerConfig);
-    SwaggerModule.setup(`${apiPrefix}/docs`, app, doc);
-  }
+    app.useGlobalPipes(
+        new ValidationPipe({
+            whitelist: true,
+            forbidNonWhitelisted: true,
+            transform: true,
+            transformOptions: { enableImplicitConversion: true },
+        }),
+    );
 
-  await app.listen(port);
-  // eslint-disable-next-line no-console
-  console.log(`Library Loans API en http://localhost:${port}/${apiPrefix}`);
-  if (swaggerEnabled) {
+    if (swaggerEnabled) {
+        const swaggerConfig = new DocumentBuilder()
+            .setTitle('Library Loans API')
+            .setDescription('Examen parcial ISIS 3710 — Sistema de préstamos de biblioteca')
+            .setVersion('0.1.0')
+            .addBearerAuth()
+            .build();
+        const doc = SwaggerModule.createDocument(app, swaggerConfig);
+        SwaggerModule.setup(`${apiPrefix}/docs`, app, doc);
+    }
+
+    await app.listen(port);
     // eslint-disable-next-line no-console
-    console.log(`Swagger UI: http://localhost:${port}/${apiPrefix}/docs`);
-  }
+    console.log(`Library Loans API en http://localhost:${port}/${apiPrefix}`);
+    if (swaggerEnabled) {
+        // eslint-disable-next-line no-console
+        console.log(`Swagger UI: http://localhost:${port}/${apiPrefix}/docs`);
+    }
 }
 
 bootstrap();
